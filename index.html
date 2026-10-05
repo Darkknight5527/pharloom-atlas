@@ -148,8 +148,8 @@ svg#map { width: 100%; height: 100%; display: block; user-select: none; }
       <section>
         <p class="label">Map view</p>
         <div class="views" role="group" aria-label="Map view">
-          <button id="viewAtlas" aria-pressed="true">My atlas</button>
-          <button id="viewGenie" aria-pressed="false">Map Genie</button>
+          <button id="viewGenie" aria-pressed="true">Map Genie</button>
+          <button id="viewAtlas" aria-pressed="false">My atlas</button>
         </div>
       </section>
       <section class="progress" aria-label="Progress">
@@ -188,7 +188,7 @@ svg#map { width: 100%; height: 100%; display: block; user-select: none; }
   </aside>
 
   <main class="stage" id="stage">
-    <div class="embed" id="embed" hidden>
+    <div class="embed" id="embed">
       <iframe id="genieFrame" title="Map Genie interactive map of Pharloom" loading="lazy" allowfullscreen></iframe>
       <div class="credit">Interactive map by <a href="https://mapgenie.io/hollow-knight-silksong/maps/pharloom" target="_blank" rel="noopener">Map Genie</a>, embedded with their share code.</div>
     </div>
@@ -644,7 +644,7 @@ function setView(v) {
   store.set("view", v);
 }
 vA.onclick = () => setView("atlas"); vG.onclick = () => { setView("genie"); maybeCollapse(); };
-if (store.get("view", "atlas") === "genie") setView("genie");
+setView(store.get("view", "genie"));
 
 renderAddBox();
 renderPins();
