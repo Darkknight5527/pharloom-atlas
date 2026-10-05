@@ -109,6 +109,13 @@ svg#map { width: 100%; height: 100%; display: block; user-select: none; }
 .tag { font-family: var(--font-mono); font-size: 10.5px; letter-spacing: .08em; text-transform: uppercase; border: 1px solid var(--line); border-radius: 4px; padding: 1px 5px; }
 
 .drawer-toggle { display: none; }
+.views { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; background: var(--panel-2); border: 1px solid var(--line); border-radius: 8px; padding: 3px; }
+.views button { background: none; border: 0; border-radius: 6px; padding: 7px 8px; font-size: 12.5px; cursor: pointer; color: var(--bone-dim); }
+.views button[aria-pressed="true"] { background: var(--needle); color: #fff4ef; }
+.embed { position: absolute; inset: 0; display: flex; flex-direction: column; background: var(--ink); z-index: 6; }
+.embed iframe { flex: 1; width: 100%; border: 0; display: block; }
+.embed .credit { padding: 6px 12px; font-size: 11.5px; color: var(--bone-faint); border-top: 1px solid var(--line); }
+.embed .credit a { color: var(--bone-dim); }
 
 @media (max-width: 760px) {
   .app { grid-template-columns: 1fr; grid-template-rows: 1fr auto; }
@@ -138,6 +145,13 @@ svg#map { width: 100%; height: 100%; display: block; user-select: none; }
       <div class="thread"></div>
     </div>
     <div class="scroll">
+      <section>
+        <p class="label">Map view</p>
+        <div class="views" role="group" aria-label="Map view">
+          <button id="viewAtlas" aria-pressed="true">My atlas</button>
+          <button id="viewGenie" aria-pressed="false">Map Genie</button>
+        </div>
+      </section>
       <section class="progress" aria-label="Progress">
         <div class="progress-row"><strong id="foundNum">0</strong><span id="foundOf">of 0 found</span></div>
         <div class="bar"><i id="foundBar"></i></div>
@@ -174,6 +188,10 @@ svg#map { width: 100%; height: 100%; display: block; user-select: none; }
   </aside>
 
   <main class="stage" id="stage">
+    <div class="embed" id="embed" hidden>
+      <iframe id="genieFrame" title="Map Genie interactive map of Pharloom" loading="lazy" allowfullscreen></iframe>
+      <div class="credit">Interactive map by <a href="https://mapgenie.io/hollow-knight-silksong/maps/pharloom" target="_blank" rel="noopener">Map Genie</a>, embedded with their share code.</div>
+    </div>
     <svg id="map" aria-label="Map of Pharloom">
       <g id="world"><g id="regionsLayer"></g><g id="labelsLayer"></g></g>
       <g id="pins"></g>
@@ -614,6 +632,19 @@ const isPhone = () => matchMedia("(max-width: 760px)").matches;
 drawerBtn.onclick = () => { side.classList.toggle("collapsed"); const open = !side.classList.contains("collapsed"); drawerBtn.textContent = open ? "Hide panel" : "Show panel"; drawerBtn.setAttribute("aria-expanded", String(open)); };
 function maybeCollapse() { if (isPhone() && !side.classList.contains("collapsed")) drawerBtn.click(); }
 function expandDrawer() { if (isPhone() && side.classList.contains("collapsed")) drawerBtn.click(); }
+
+// ---------- view switch (Map Genie embed) ----------
+const embed = document.getElementById("embed"), genieFrame = document.getElementById("genieFrame");
+const vA = document.getElementById("viewAtlas"), vG = document.getElementById("viewGenie");
+function setView(v) {
+  const genie = v === "genie";
+  if (genie && !genieFrame.src) genieFrame.src = "https://mapgenie.io/hollow-knight-silksong/maps/pharloom?embed=light";
+  embed.hidden = !genie; closePop();
+  vA.setAttribute("aria-pressed", String(!genie)); vG.setAttribute("aria-pressed", String(genie));
+  store.set("view", v);
+}
+vA.onclick = () => setView("atlas"); vG.onclick = () => { setView("genie"); maybeCollapse(); };
+if (store.get("view", "atlas") === "genie") setView("genie");
 
 renderAddBox();
 renderPins();
