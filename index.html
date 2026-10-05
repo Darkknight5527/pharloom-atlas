@@ -7,7 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Marcellus+SC&family=IBM+Plex+Sans:wght@400;500&family=IBM+Plex+Mono:wght@400;500&display=swap">
 <style>
-/* Layout: one-screen app — atlas sidebar on the left, pannable thread-map on the right; sidebar becomes a bottom drawer on phones. Single dark look by choice. */
+/* Layout: Map Genie map fills the screen; a collapsible tracker panel sits on the right (bottom drawer on phones). Single dark look by choice. */
 :root {
   color-scheme: dark;
   --ink: #0b0d12;
@@ -18,636 +18,282 @@
   --bone-dim: #a39d90;
   --bone-faint: #6f6b63;
   --needle: #c8473f;
-  --needle-soft: #3a1c1c;
-  --bell: #d6a84a;
-  --font-display: "Marcellus SC", "Cormorant SC", Georgia, serif;
+  --font-display: "Marcellus SC", Georgia, serif;
   --font-body: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
   --font-mono: "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace;
 }
+* { box-sizing: border-box; }
 html, body { height: 100%; margin: 0; }
 [hidden] { display: none !important; }
 body { background: var(--ink); color: var(--bone); font-family: var(--font-body); font-size: 14px; overflow: hidden; }
-* { box-sizing: border-box; }
 button, input, select, textarea { font: inherit; color: inherit; }
-:focus-visible { outline: 2px solid var(--bell); outline-offset: 2px; }
+:focus-visible { outline: 2px solid #d6a84a; outline-offset: 2px; }
 
-.app { display: grid; grid-template-columns: 330px 1fr; height: 100%; }
+.app { display: grid; grid-template-columns: 1fr 340px; height: 100%; }
+.app.closed { grid-template-columns: 1fr 0; }
+.map { position: relative; min-width: 0; display: flex; flex-direction: column; }
+.map iframe { flex: 1; width: 100%; border: 0; display: block; background: var(--ink); }
+.credit { padding: 6px 12px; font-size: 11.5px; color: var(--bone-faint); border-top: 1px solid var(--line); display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
+.credit a { color: var(--bone-dim); }
+.open-panel { position: absolute; right: 12px; top: 12px; z-index: 3; }
 
-/* Sidebar */
-.side { background: var(--panel); border-right: 1px solid var(--line); display: flex; flex-direction: column; min-height: 0; }
-.brand { padding: 20px 20px 14px; border-bottom: 1px solid var(--line); }
-.brand h1 { font-family: var(--font-display); font-weight: 400; font-size: 26px; letter-spacing: .06em; margin: 0; line-height: 1.1; text-wrap: balance; }
-.brand p { margin: 6px 0 0; color: var(--bone-dim); font-size: 12.5px; line-height: 1.5; }
-.thread { height: 1px; margin-top: 12px; background: repeating-linear-gradient(90deg, var(--bone-faint) 0 6px, transparent 6px 10px); }
-.scroll { overflow-y: auto; padding: 16px 20px 24px; display: flex; flex-direction: column; gap: 20px; min-height: 0; }
-.label { font-family: var(--font-mono); font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--bone-faint); margin: 0 0 8px; }
-
-.progress { display: grid; gap: 8px; }
-.progress-row { display: flex; justify-content: space-between; align-items: baseline; }
-.progress-row strong { font-family: var(--font-display); font-weight: 400; font-size: 22px; font-variant-numeric: tabular-nums; }
-.progress-row span { color: var(--bone-dim); font-size: 12px; font-variant-numeric: tabular-nums; }
+.side { background: var(--panel); border-left: 1px solid var(--line); display: flex; flex-direction: column; min-height: 0; overflow: hidden; }
+.head { padding: 16px 18px 12px; border-bottom: 1px solid var(--line); display: grid; gap: 10px; }
+.head-top { display: flex; align-items: center; gap: 8px; }
+.head h1 { font-family: var(--font-display); font-weight: 400; font-size: 22px; letter-spacing: .06em; margin: 0; }
+.head-top .chip-btn { margin-left: auto; }
+.prog-row { display: flex; justify-content: space-between; align-items: baseline; }
+.prog-row strong { font-family: var(--font-display); font-weight: 400; font-size: 20px; font-variant-numeric: tabular-nums; }
+.prog-row span { color: var(--bone-dim); font-size: 12px; font-variant-numeric: tabular-nums; }
 .bar { height: 6px; border-radius: 3px; background: var(--panel-2); overflow: hidden; }
 .bar i { display: block; height: 100%; width: 0; background: var(--needle); transition: width .3s; }
+.tools { display: flex; gap: 6px; }
+.tools input, .tools select { background: var(--panel-2); border: 1px solid var(--line); border-radius: 6px; padding: 7px 9px; min-width: 0; }
+.tools input { flex: 1; }
+.tools input::placeholder { color: var(--bone-faint); }
 
-.search { display: flex; gap: 6px; }
-.search input { flex: 1; min-width: 0; background: var(--panel-2); border: 1px solid var(--line); border-radius: 6px; padding: 9px 11px; }
-.search input::placeholder { color: var(--bone-faint); }
-.results { display: grid; gap: 2px; margin-top: 6px; }
-.results button { text-align: left; background: none; border: 0; padding: 7px 8px; border-radius: 5px; cursor: pointer; display: flex; gap: 8px; align-items: center; }
-.results button:hover { background: var(--panel-2); }
-.results small { color: var(--bone-faint); margin-left: auto; font-size: 11px; white-space: nowrap; }
-.dot { width: 10px; height: 10px; border-radius: 50%; flex: none; }
+.list { overflow-y: auto; padding: 8px 10px 16px; flex: 1; min-height: 0; }
+.group > summary { list-style: none; cursor: pointer; display: flex; align-items: center; gap: 8px; padding: 10px 8px 6px; font-family: var(--font-mono); font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--bone-faint); }
+.group > summary::-webkit-details-marker { display: none; }
+.group > summary .n { margin-left: auto; font-variant-numeric: tabular-nums; }
+.dot { width: 9px; height: 9px; border-radius: 50%; flex: none; }
+.item { display: grid; grid-template-columns: auto 1fr auto; gap: 10px; align-items: start; padding: 7px 8px; border-radius: 6px; }
+.item:hover { background: var(--panel-2); }
+.item input[type=checkbox] { width: 17px; height: 17px; margin: 2px 0 0; accent-color: var(--needle); cursor: pointer; }
+.item label { cursor: pointer; min-width: 0; }
+.item .nm { display: block; line-height: 1.35; }
+.item .sub { display: block; color: var(--bone-faint); font-size: 12px; margin-top: 1px; overflow-wrap: anywhere; }
+.item.done .nm { color: var(--bone-faint); text-decoration: line-through; }
+.del { background: none; border: 0; color: var(--bone-faint); cursor: pointer; font-size: 16px; padding: 0 4px; }
+.del:hover { color: var(--needle); }
+.empty { color: var(--bone-faint); font-size: 12.5px; padding: 12px 8px; }
 
-.toggles { display: flex; gap: 8px; margin-bottom: 10px; }
+.foot { border-top: 1px solid var(--line); padding: 12px 14px calc(12px + env(safe-area-inset-bottom, 0px)); display: grid; gap: 8px; }
+.form { display: grid; gap: 6px; }
+.form .row { display: flex; gap: 6px; }
+.form input, .form select { background: var(--panel-2); border: 1px solid var(--line); border-radius: 6px; padding: 7px 9px; width: 100%; min-width: 0; }
+.err { color: #f08d85; font-size: 12px; }
+.btn { background: var(--needle); color: #fff4ef; border: 0; border-radius: 6px; padding: 8px 12px; cursor: pointer; font-weight: 500; white-space: nowrap; }
+.btn:hover { filter: brightness(1.1); }
 .chip-btn { background: var(--panel-2); border: 1px solid var(--line); border-radius: 5px; padding: 5px 10px; font-size: 12px; cursor: pointer; color: var(--bone-dim); }
 .chip-btn:hover { color: var(--bone); border-color: var(--bone-faint); }
-.cats { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
-.cat { display: flex; align-items: center; gap: 8px; padding: 8px 9px; border-radius: 6px; background: var(--panel-2); border: 1px solid transparent; cursor: pointer; font-size: 13px; text-align: left; min-width: 0; }
-.cat span.n { margin-left: auto; color: var(--bone-faint); font-family: var(--font-mono); font-size: 11.5px; font-variant-numeric: tabular-nums; }
-.cat .nm { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.cat[aria-pressed="false"] { opacity: .42; }
-.cat[aria-pressed="false"] .nm { text-decoration: line-through; }
-.cat[aria-pressed="true"] { border-color: var(--line); }
-
-.regions { display: flex; flex-wrap: wrap; gap: 5px; }
-.regions button { background: none; border: 1px solid var(--line); border-radius: 999px; padding: 4px 10px; font-size: 12px; cursor: pointer; color: var(--bone-dim); }
-.regions button:hover { color: var(--bone); border-color: var(--bone-faint); }
-
-.add-box { border: 1px dashed var(--line); border-radius: 8px; padding: 12px; display: grid; gap: 8px; }
-.add-box p { margin: 0; color: var(--bone-dim); font-size: 12.5px; line-height: 1.5; }
-.btn { background: var(--needle); color: #fff4ef; border: 0; border-radius: 6px; padding: 9px 12px; cursor: pointer; font-weight: 500; }
-.btn.ghost { background: var(--panel-2); color: var(--bone); border: 1px solid var(--line); }
-.btn:hover { filter: brightness(1.1); }
-.form { display: grid; gap: 8px; }
-.form input, .form select, .form textarea { background: var(--panel-2); border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px; width: 100%; }
-.form textarea { resize: vertical; min-height: 54px; }
-.form .row { display: flex; gap: 8px; }
-.err { color: #f08d85; font-size: 12px; }
-.foot { color: var(--bone-faint); font-size: 11.5px; line-height: 1.5; }
-
-/* Map */
-.stage { position: relative; min-width: 0; overflow: hidden; background:
-  radial-gradient(ellipse at 50% 40%, #141824 0%, var(--ink) 70%); touch-action: none; }
-.stage.adding { cursor: crosshair; }
-svg#map { width: 100%; height: 100%; display: block; user-select: none; }
-.region-label { font-family: var(--font-display); fill: var(--bone); paint-order: stroke; stroke: var(--ink); stroke-width: 4px; letter-spacing: .08em; pointer-events: none; }
-.pin { cursor: pointer; }
-.pin.found { opacity: .32; }
-.pin:hover circle.halo { opacity: .5; }
-.ctrl { position: absolute; right: 14px; bottom: calc(14px + env(safe-area-inset-bottom, 0px)); display: grid; gap: 6px; }
-.ctrl button { width: 40px; height: 40px; border-radius: 8px; background: var(--panel); border: 1px solid var(--line); cursor: pointer; font-size: 18px; display: grid; place-items: center; }
-.ctrl button:hover { background: var(--panel-2); }
-.hint { position: absolute; left: 50%; top: 14px; transform: translateX(-50%); background: var(--needle-soft); border: 1px solid var(--needle); color: var(--bone); padding: 7px 14px; border-radius: 999px; font-size: 12.5px; }
-.legend-note { position: absolute; left: 14px; bottom: calc(14px + env(safe-area-inset-bottom, 0px)); color: var(--bone-faint); font-family: var(--font-mono); font-size: 11px; background: rgba(11,13,18,.7); padding: 5px 8px; border-radius: 5px; }
-
-.pop { position: absolute; width: 260px; max-width: calc(100% - 24px); background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 14px; box-shadow: 0 10px 30px rgba(0,0,0,.5); z-index: 5; display: grid; gap: 8px; }
-.pop h3 { margin: 0; font-family: var(--font-display); font-weight: 400; font-size: 18px; letter-spacing: .04em; text-wrap: balance; }
-.pop .meta { display: flex; gap: 6px; align-items: center; color: var(--bone-dim); font-size: 12px; flex-wrap: wrap; }
-.pop p { margin: 0; color: var(--bone-dim); font-size: 13px; line-height: 1.5; }
-.pop .acts { display: flex; gap: 6px; flex-wrap: wrap; }
-.pop .x { position: absolute; right: 8px; top: 6px; background: none; border: 0; color: var(--bone-faint); font-size: 18px; cursor: pointer; }
-.tag { font-family: var(--font-mono); font-size: 10.5px; letter-spacing: .08em; text-transform: uppercase; border: 1px solid var(--line); border-radius: 4px; padding: 1px 5px; }
-
-.drawer-toggle { display: none; }
-.views { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; background: var(--panel-2); border: 1px solid var(--line); border-radius: 8px; padding: 3px; }
-.views button { background: none; border: 0; border-radius: 6px; padding: 7px 8px; font-size: 12.5px; cursor: pointer; color: var(--bone-dim); }
-.views button[aria-pressed="true"] { background: var(--needle); color: #fff4ef; }
-.embed { position: absolute; inset: 0; display: flex; flex-direction: column; background: var(--ink); z-index: 6; }
-.embed iframe { flex: 1; width: 100%; border: 0; display: block; }
-.embed .credit { padding: 6px 12px; font-size: 11.5px; color: var(--bone-faint); border-top: 1px solid var(--line); }
-.embed .credit a { color: var(--bone-dim); }
+.backup { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+.note { color: var(--bone-faint); font-size: 11.5px; line-height: 1.45; margin: 0; }
+.confirm { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
 
 @media (max-width: 760px) {
-  .app { grid-template-columns: 1fr; grid-template-rows: 1fr auto; }
-  .stage { grid-row: 1; }
-  .side { grid-row: 2; border-right: 0; border-top: 1px solid var(--line); max-height: 52vh; }
-  .side.collapsed .scroll { display: none; }
-  .brand { padding: 12px 16px; display: flex; align-items: center; gap: 10px; }
-  .brand h1 { font-size: 20px; }
-  .brand p, .brand .thread { display: none; }
-  .drawer-toggle { display: inline-block; margin-left: auto; }
-  .scroll { padding: 12px 16px calc(18px + env(safe-area-inset-bottom, 0px)); }
-  .legend-note { display: none; }
+  .app, .app.closed { grid-template-columns: 1fr; grid-template-rows: 1fr auto; }
+  .side { border-left: 0; border-top: 1px solid var(--line); max-height: 55vh; }
+  .app.closed .side .list, .app.closed .side .foot, .app.closed .side .tools { display: none; }
+  .app.closed .side { max-height: none; }
+  .open-panel { display: none; }
 }
+@media (min-width: 761px) { .app.closed .side { display: none; } }
 @media (prefers-reduced-motion: reduce) { .bar i { transition: none; } }
 </style>
 </head>
 <body>
-
-<div class="app">
-  <aside class="side" id="side">
-    <div class="brand">
-      <div>
-        <h1>Pharloom Atlas</h1>
-        <p>A thread-map of Silksong's kingdom. Filter, search, mark what you've found, and pin your own discoveries.</p>
-      </div>
-      <button class="chip-btn drawer-toggle" id="drawerBtn" aria-expanded="true">Hide panel</button>
-      <div class="thread"></div>
+<div class="app" id="app">
+  <main class="map">
+    <iframe src="https://mapgenie.io/hollow-knight-silksong/maps/pharloom?embed=light" title="Map Genie interactive map of Pharloom" allowfullscreen></iframe>
+    <div class="credit">
+      <span>Interactive map by <a href="https://mapgenie.io/hollow-knight-silksong/maps/pharloom" target="_blank" rel="noopener">Map Genie</a></span>
+      <a href="https://mapgenie.io/hollow-knight-silksong/maps/pharloom" target="_blank" rel="noopener">Open full site ↗</a>
     </div>
-    <div class="scroll">
-      <section>
-        <p class="label">Map view</p>
-        <div class="views" role="group" aria-label="Map view">
-          <button id="viewGenie" aria-pressed="true">Map Genie</button>
-          <button id="viewAtlas" aria-pressed="false">My atlas</button>
+    <button class="chip-btn open-panel" id="openPanel" hidden>Show tracker</button>
+  </main>
+
+  <aside class="side" id="side" aria-label="Progress tracker">
+    <div class="head">
+      <div class="head-top">
+        <h1>My tracker</h1>
+        <button class="chip-btn" id="togglePanel" aria-expanded="true">Hide</button>
+      </div>
+      <div class="prog-row"><strong id="doneNum">0</strong><span id="doneOf">of 0 done</span></div>
+      <div class="bar"><i id="doneBar"></i></div>
+      <div class="tools">
+        <input id="q" type="search" placeholder="Search your list…" autocomplete="off">
+        <select id="show" aria-label="Show">
+          <option value="all">All</option>
+          <option value="todo">To do</option>
+          <option value="done">Done</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="list" id="list"></div>
+
+    <div class="foot">
+      <form class="form" id="addForm" novalidate>
+        <div class="row">
+          <input id="newName" placeholder="Add item, e.g. Mask shard near bench" maxlength="80">
+          <button class="btn" type="submit">Add</button>
         </div>
-      </section>
-      <section class="progress" aria-label="Progress">
-        <div class="progress-row"><strong id="foundNum">0</strong><span id="foundOf">of 0 found</span></div>
-        <div class="bar"><i id="foundBar"></i></div>
-      </section>
-
-      <section>
-        <p class="label">Search</p>
-        <div class="search"><input id="q" type="search" placeholder="Boss, NPC, area…" autocomplete="off"></div>
-        <div class="results" id="results"></div>
-      </section>
-
-      <section>
-        <p class="label">Categories</p>
-        <div class="toggles">
-          <button class="chip-btn" id="showAll">Show all</button>
-          <button class="chip-btn" id="hideAll">Hide all</button>
-          <button class="chip-btn" id="hideFound" aria-pressed="false">Hide found</button>
+        <div class="row">
+          <select id="newCat" aria-label="Category"></select>
+          <input id="newArea" placeholder="Area (optional)" maxlength="40">
         </div>
-        <div class="cats" id="cats"></div>
-      </section>
-
-      <section>
-        <p class="label">Jump to area</p>
-        <div class="regions" id="regionList"></div>
-      </section>
-
-      <section>
-        <p class="label">Your markers</p>
-        <div class="add-box" id="addBox"></div>
-      </section>
-
-      <p class="foot">Region layout and seeded pins are approximate and hand-placed. Found marks and your own pins are saved in this browser only.</p>
+        <span class="err" id="addErr" hidden>Type a name for the item first.</span>
+      </form>
+      <div class="backup">
+        <button class="chip-btn" id="exportBtn" type="button">Back up</button>
+        <label class="chip-btn" for="importFile">Restore</label>
+        <input type="file" id="importFile" accept="application/json,.json" hidden>
+        <button class="chip-btn" id="resetBtn" type="button">Reset ticks</button>
+      </div>
+      <div class="confirm" id="resetConfirm" hidden>
+        <span class="err">Untick everything?</span>
+        <button class="btn" id="resetYes" type="button">Untick all</button>
+        <button class="chip-btn" id="resetNo" type="button">Cancel</button>
+      </div>
+      <p class="note" id="status">Saved in this browser. Use Back up to move your progress to another device.</p>
     </div>
   </aside>
-
-  <main class="stage" id="stage">
-    <div class="embed" id="embed">
-      <iframe id="genieFrame" title="Map Genie interactive map of Pharloom" loading="lazy" allowfullscreen></iframe>
-      <div class="credit">Interactive map by <a href="https://mapgenie.io/hollow-knight-silksong/maps/pharloom" target="_blank" rel="noopener">Map Genie</a>, embedded with their share code.</div>
-    </div>
-    <svg id="map" aria-label="Map of Pharloom">
-      <g id="world"><g id="regionsLayer"></g><g id="labelsLayer"></g></g>
-      <g id="pins"></g>
-    </svg>
-    <div class="hint" id="hint" hidden>Click the map to place your marker</div>
-    <div class="legend-note" id="zoomNote">zoom 1.0×</div>
-    <div class="ctrl">
-      <button id="zin" aria-label="Zoom in">+</button>
-      <button id="zout" aria-label="Zoom out">−</button>
-      <button id="zfit" aria-label="Fit whole map">⤢</button>
-    </div>
-    <div class="pop" id="pop" hidden></div>
-  </main>
 </div>
 
 <script>
 (() => {
-const S = 2; // source grid → world units
-const NS = "http://www.w3.org/2000/svg";
-
 const CATS = [
-  { id: "bellway", name: "Bellway station", color: "#d6a84a", glyph: "bell" },
-  { id: "boss",    name: "Boss",            color: "#c8473f", glyph: "skull" },
-  { id: "npc",     name: "NPC",             color: "#6f93b8", glyph: "talk" },
-  { id: "vendor",  name: "Vendor",          color: "#8fb37a", glyph: "coin" },
-  { id: "ability", name: "Ability",         color: "#a07bd0", glyph: "star" },
-  { id: "poi",     name: "Point of interest", color: "#cfc6b4", glyph: "flag" },
-  { id: "bench",   name: "Bench",           color: "#5fa8a0", glyph: "bench" },
-  { id: "mask",    name: "Mask shard",      color: "#e07a6a", glyph: "mask" },
-  { id: "spool",   name: "Spool fragment",  color: "#d78fb0", glyph: "spool" },
-  { id: "custom",  name: "My notes",        color: "#e6dfcf", glyph: "pin" }
+  { id: "boss", name: "Bosses", color: "#c8473f" },
+  { id: "ability", name: "Abilities", color: "#a07bd0" },
+  { id: "bellway", name: "Bellway stations", color: "#d6a84a" },
+  { id: "npc", name: "NPCs & vendors", color: "#6f93b8" },
+  { id: "mask", name: "Mask shards", color: "#e07a6a" },
+  { id: "spool", name: "Spool fragments", color: "#d78fb0" },
+  { id: "flea", name: "Fleas", color: "#8fb37a" },
+  { id: "other", name: "My notes", color: "#cfc6b4" }
 ];
 const CAT = Object.fromEntries(CATS.map(c => [c.id, c]));
 
-// Regions: [name, x0,y0,x1,y1 (source grid), tint]
-const T = { moss:"#6f9a5a", bone:"#c08a4c", forge:"#d07a3a", slate:"#5f8f96", olive:"#9a9a58", stone:"#9b8a72", rose:"#b0646a", steel:"#5b7398", gold:"#c9a24f", murk:"#7f9a54", grey:"#7c8090", silver:"#b8bccc", indigo:"#6a68a8" };
-const REGIONS = [
-  ["The Cradle",470,25,520,90,T.silver],["High Halls",385,90,445,170,T.gold],["Cogwork Core",480,105,525,190,T.gold],
-  ["Memorium",530,115,600,175,T.gold],["Songclave",590,155,660,195,T.gold],["Putrified Ducts",660,135,915,190,T.murk],
-  ["Choral Chambers",420,190,520,235,T.gold],["Whiteward",420,238,505,262,T.grey],["Whispering Vaults",600,198,652,240,T.gold],
-  ["Grand Bellway",555,228,600,262,T.gold],["Underworks",380,266,560,330,T.grey],["Exhaust Organ",585,270,680,315,T.forge],
-  ["Mount Fay",75,75,240,235,T.steel],["The Slab",242,130,330,220,T.steel],["Coral Tower",80,228,125,262,T.rose],
-  ["Sands of Karak",80,264,230,320,T.rose],["Grand Gate",270,275,360,330,T.stone],["Blasted Steps",120,322,330,375,T.stone],
-  ["Wisp Thicket",470,334,560,358,T.slate],["Sinner's Road",585,330,700,392,T.murk],["Bilewater",702,180,800,332,T.murk],
-  ["Greymoor",460,360,660,435,T.slate],["Craw Lake",700,372,800,425,T.slate],["Verdania",804,372,965,410,T.moss],
-  ["Shellwood",215,385,330,440,T.olive],["Bellhart",400,400,470,470,T.stone],["Mosshome",215,455,290,495,T.moss],
-  ["Wormways",55,455,212,505,T.moss],["Hunter's March",470,440,650,495,T.rose],["Far Fields",660,440,900,555,T.bone],
-  ["Bonegrave",80,510,142,540,T.moss],["Moss Grotto",140,525,212,562,T.moss],["Bone Bottom",215,505,298,550,T.bone],
-  ["The Marrow",300,470,440,535,T.bone],["Weavenest Atla",215,560,320,590,T.indigo],["Deep Docks",470,515,690,600,T.forge],
-  ["The Abyss",415,602,605,690,T.grey]
-];
-const MAJOR = new Set(["Mount Fay","The Slab","Sands of Karak","Blasted Steps","Shellwood","Greymoor","Far Fields","Deep Docks","The Marrow","Hunter's March","Bilewater","Putrified Ducts","Underworks","Choral Chambers","The Abyss","Wormways","Verdania","Moss Grotto","Bone Bottom","Bellhart","The Cradle","Sinner's Road"]);
-
-// Seed pins (source grid coords, approximate placement)
+// Starter list (names and areas only)
 const SEED = [
-  ["bw1","bellway","Bone Bottom bellway",258,520,"Bone Bottom","The first bellway station you'll reach after defeating the Bell Beast."],
-  ["bw2","bellway","Marrow bellway",360,505,"The Marrow",""],
-  ["bw3","bellway","Deep Docks bellway",515,540,"Deep Docks",""],
-  ["bw4","bellway","Far Fields bellway",720,462,"Far Fields",""],
-  ["bw5","bellway","Greymoor bellway",540,402,"Greymoor",""],
-  ["bw6","bellway","Bellhart bellway",440,444,"Bellhart",""],
-  ["bw7","bellway","Shellwood bellway",262,416,"Shellwood",""],
-  ["bw8","bellway","Blasted Steps bellway",205,348,"Blasted Steps",""],
-  ["bw9","bellway","Grand Bellway",577,248,"Grand Bellway","The Citadel's central bellway hub."],
-  ["b1","boss","Moss Mother",160,545,"Moss Grotto","The first boss. Defeat her to climb out of the Grotto."],
-  ["b2","boss","Bell Beast",400,508,"The Marrow","Beating it opens bellway travel across Pharloom."],
-  ["b3","boss","Lace",565,560,"Deep Docks","Your first duel with Lace."],
-  ["b4","boss","Fourth Chorus",805,480,"Far Fields",""],
-  ["b5","boss","Moorwing",605,395,"Greymoor","Optional boss in Greymoor."],
-  ["b6","boss","Widow",445,418,"Bellhart","Defeating her grants the Needolin."],
-  ["b7","boss","Sister Splinter",282,402,"Shellwood",""],
-  ["b8","boss","Last Judge",305,300,"Grand Gate","Guards the way into the Citadel."],
-  ["b9","boss","Skarrsinger Karmelita",600,466,"Hunter's March",""],
-  ["b10","boss","Phantom",630,298,"Exhaust Organ",""],
-  ["b11","boss","Groal the Great",760,262,"Bilewater",""],
-  ["b12","boss","Grand Mother Silk",495,52,"The Cradle","Final boss of Act 2."],
-  ["n1","npc","Shakra",370,490,"The Marrow","Mapmaker. Sells area maps; she moves to new regions as you progress."],
-  ["n2","npc","Fleamaster Mooshka",330,520,"The Marrow","Flea Caravan. Starts the lost-fleas side quest."],
-  ["n3","npc","Nuu",552,378,"Greymoor","At the top of Halfway Home. Gives the Hunter's Journal quest."],
-  ["n4","npc","Chapel Maid",240,515,"Bone Bottom",""],
-  ["v1","vendor","Pebb",270,525,"Bone Bottom","Sells the Simple Key among other wares."],
-  ["v2","vendor","Forge Daughter",500,575,"Deep Docks","Sells and upgrades tools."],
-  ["v3","vendor","Creige",560,388,"Greymoor","Bartender at Halfway Home. Refills health for rosaries."],
-  ["a1","ability","Silkspear",420,495,"The Marrow","Your first silk skill."],
-  ["a2","ability","Swift Step",640,585,"Deep Docks","Dash."],
-  ["a3","ability","Drifter's Cloak",860,520,"Far Fields","Lets Hornet glide."],
-  ["a4","ability","Thread Storm",500,420,"Greymoor",""],
-  ["p1","poi","Halfway Home",555,388,"Greymoor","Tavern hub with Creige and Nuu."],
-  ["p2","poi","Weavenest Atla door",200,548,"Moss Grotto","Play the Needolin at the locked door to open Weavenest Atla."],
-  ["p3","poi","Bone Bottom",255,535,"Bone Bottom","The first town. Ring the bell to summon Shakra."],
-  ["p4","poi","Pilgrim's Rest",715,495,"Far Fields",""]
-].map(([id,cat,name,x,y,region,note]) => ({ id, cat, name, x: x*S, y: y*S, region, note, user: false }));
+  ["b1","boss","Moss Mother","Moss Grotto"],["b2","boss","Bell Beast","The Marrow"],["b3","boss","Lace","Deep Docks"],
+  ["b4","boss","Fourth Chorus","Far Fields"],["b5","boss","Moorwing","Greymoor"],["b6","boss","Widow","Bellhart"],
+  ["b7","boss","Sister Splinter","Shellwood"],["b8","boss","Last Judge","Grand Gate"],["b9","boss","Skarrsinger Karmelita","Hunter's March"],
+  ["b10","boss","Phantom","Exhaust Organ"],["b11","boss","Groal the Great","Bilewater"],["b12","boss","Grand Mother Silk","The Cradle"],
+  ["a1","ability","Silkspear","The Marrow"],["a2","ability","Swift Step","Deep Docks"],["a3","ability","Drifter's Cloak","Far Fields"],
+  ["a4","ability","Needolin","Bellhart"],["a5","ability","Thread Storm","Greymoor"],
+  ["w1","bellway","Bone Bottom","Bone Bottom"],["w2","bellway","The Marrow","The Marrow"],["w3","bellway","Deep Docks","Deep Docks"],
+  ["w4","bellway","Far Fields","Far Fields"],["w5","bellway","Greymoor","Greymoor"],["w6","bellway","Bellhart","Bellhart"],
+  ["w7","bellway","Shellwood","Shellwood"],["w8","bellway","Blasted Steps","Blasted Steps"],["w9","bellway","Grand Bellway","The Citadel"],
+  ["n1","npc","Shakra (maps)","The Marrow"],["n2","npc","Fleamaster Mooshka","The Marrow"],["n3","npc","Pebb (shop)","Bone Bottom"],
+  ["n4","npc","Forge Daughter (tools)","Deep Docks"],["n5","npc","Creige (Halfway Home)","Greymoor"],["n6","npc","Nuu (Hunter's Journal)","Greymoor"]
+].map(([id,cat,name,area]) => ({ id, cat, name, area, user: false }));
 
-// ---------- storage (per browser, optional) ----------
-const store = {
-  get(k, d) { try { const v = localStorage.getItem("pharloom-atlas:" + k); return v ? JSON.parse(v) : d; } catch { return d; } },
-  set(k, v) { try { localStorage.setItem("pharloom-atlas:" + k, JSON.stringify(v)); } catch {} }
-};
-let found = new Set(store.get("found", []));
-let hidden = new Set(store.get("hidden", []));
-let hideFound = store.get("hideFound", false);
-let userPins = store.get("user", []);
-const allPins = () => SEED.concat(userPins);
+const KEY = "pharloom-tracker:v1";
+function load() { try { return JSON.parse(localStorage.getItem(KEY)) || {}; } catch { return {}; } }
+function save() { try { localStorage.setItem(KEY, JSON.stringify(state)); } catch { setStatus("Couldn't save. Your browser may be blocking storage for this site."); } }
+const saved = load();
+const state = { done: saved.done || [], user: saved.user || [], open: saved.open || {}, panel: saved.panel !== false };
+let done = new Set(state.done);
+const items = () => SEED.concat(state.user);
 
-// ---------- render regions ----------
-const regionsLayer = document.getElementById("regionsLayer");
-const labelsLayer = document.getElementById("labelsLayer");
-function rng(seed) { let s = seed; return () => (s = (s * 16807) % 2147483647) / 2147483647; }
-function el(tag, attrs) { const e = document.createElementNS(NS, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); return e; }
+const listEl = document.getElementById("list"), q = document.getElementById("q"), show = document.getElementById("show");
+function setStatus(t) { document.getElementById("status").textContent = t; }
 
-REGIONS.forEach(([name,x0,y0,x1,y1,tint], i) => {
-  const X0 = x0*S, Y0 = y0*S, X1 = x1*S, Y1 = y1*S, w = X1-X0, h = Y1-Y0;
-  const g = el("g", {});
-  const r = rng(1000 + i * 97);
-  // chambers: a spine corridor plus rooms hung off it
-  const horiz = w >= h;
-  const spineW = Math.max(10, Math.min(w, h) * 0.16);
-  const spine = horiz
-    ? el("rect", { x: X0 + 6, y: Y0 + h*0.45, width: w - 12, height: spineW, rx: 4 })
-    : el("rect", { x: X0 + w*0.42, y: Y0 + 6, width: spineW, height: h - 12, rx: 4 });
-  g.appendChild(spine);
-  const rooms = 3 + Math.floor(Math.min(w, h) / 60) + Math.floor(Math.max(w, h) / 160);
-  for (let k = 0; k < rooms; k++) {
-    const rw = Math.max(18, (horiz ? w : w) * (0.12 + r() * 0.22));
-    const rh = Math.max(16, (horiz ? h : h) * (0.14 + r() * 0.26));
-    const rx = X0 + 4 + r() * Math.max(1, w - rw - 8);
-    const ry = Y0 + 4 + r() * Math.max(1, h - rh - 8);
-    g.appendChild(el("rect", { x: rx.toFixed(1), y: ry.toFixed(1), width: rw.toFixed(1), height: rh.toFixed(1), rx: 5 }));
-    // shaft connecting room to spine
-    if (horiz) { const cx = rx + rw/2; const sy = Y0 + h*0.45; g.appendChild(el("rect", { x: cx-3, y: Math.min(ry+rh/2, sy), width: 6, height: Math.abs(sy - (ry+rh/2)) + spineW/2 })); }
-    else { const cy = ry + rh/2; const sx = X0 + w*0.42; g.appendChild(el("rect", { x: Math.min(rx+rw/2, sx), y: cy-3, width: Math.abs(sx-(rx+rw/2)) + spineW/2, height: 6 })); }
-  }
-  g.setAttribute("fill", tint); g.setAttribute("fill-opacity", ".16");
-  g.setAttribute("stroke", tint); g.setAttribute("stroke-opacity", ".85"); g.setAttribute("stroke-width", "1.6");
-  regionsLayer.appendChild(g);
-  const fs = MAJOR.has(name) ? 17 : 12;
-  const t = el("text", { x: X0 + w/2, y: Y1 - 6, "text-anchor": "middle", class: "region-label", "font-size": fs, opacity: MAJOR.has(name) ? .95 : .7 });
-  t.textContent = name;
-  labelsLayer.appendChild(t);
-});
-
-// ---------- view / pan-zoom ----------
-const stage = document.getElementById("stage");
-const world = document.getElementById("world");
-const pinsLayer = document.getElementById("pins");
-const WORLD = { x0: 90, y0: 30, x1: 1950, y1: 1400 };
-let view = { k: 1, tx: 0, ty: 0 };
-const KMIN = 0.25, KMAX = 6;
-
-function fit() {
-  const r = stage.getBoundingClientRect();
-  const k = Math.min(r.width / (WORLD.x1 - WORLD.x0), r.height / (WORLD.y1 - WORLD.y0)) * 0.94;
-  view.k = k;
-  view.tx = (r.width - (WORLD.x1 - WORLD.x0) * k) / 2 - WORLD.x0 * k;
-  view.ty = (r.height - (WORLD.y1 - WORLD.y0) * k) / 2 - WORLD.y0 * k;
-  apply();
-}
-function apply() {
-  world.setAttribute("transform", `translate(${view.tx},${view.ty}) scale(${view.k})`);
-  pinsLayer.querySelectorAll(".pin").forEach(p => {
-    p.setAttribute("transform", `translate(${p._x * view.k + view.tx},${p._y * view.k + view.ty})`);
-  });
-  document.getElementById("zoomNote").textContent = `zoom ${(view.k / baseK()).toFixed(1)}×`;
-  placePopup();
-}
-function baseK() { const r = stage.getBoundingClientRect(); return Math.min(r.width / (WORLD.x1 - WORLD.x0), r.height / (WORLD.y1 - WORLD.y0)) * 0.94 || 1; }
-function zoomAt(f, cx, cy) {
-  const k2 = Math.max(KMIN * baseK(), Math.min(KMAX * baseK(), view.k * f));
-  const real = k2 / view.k;
-  view.tx = cx - (cx - view.tx) * real;
-  view.ty = cy - (cy - view.ty) * real;
-  view.k = k2; apply();
-}
-function flyTo(x, y, k) {
-  const r = stage.getBoundingClientRect();
-  view.k = k || Math.max(view.k, baseK() * 2.4);
-  view.tx = r.width / 2 - x * view.k;
-  view.ty = r.height / 2 - y * view.k;
-  apply();
-}
-function toWorld(cx, cy) { return { x: (cx - view.tx) / view.k, y: (cy - view.ty) / view.k }; }
-
-stage.addEventListener("wheel", e => {
-  e.preventDefault();
-  const r = stage.getBoundingClientRect();
-  zoomAt(Math.exp(-e.deltaY * 0.0015), e.clientX - r.left, e.clientY - r.top);
-}, { passive: false });
-
-const pointers = new Map(); let dragMoved = false, pinchD = 0;
-stage.addEventListener("pointerdown", e => {
-  if (e.target.closest(".pop, .ctrl")) return;
-  stage.setPointerCapture(e.pointerId);
-  pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
-  dragMoved = false;
-  if (pointers.size === 2) { const [a, b] = [...pointers.values()]; pinchD = Math.hypot(a.x - b.x, a.y - b.y); }
-});
-stage.addEventListener("pointermove", e => {
-  if (!pointers.has(e.pointerId)) return;
-  const prev = pointers.get(e.pointerId);
-  const cur = { x: e.clientX, y: e.clientY };
-  pointers.set(e.pointerId, cur);
-  if (pointers.size === 1) {
-    const dx = cur.x - prev.x, dy = cur.y - prev.y;
-    if (Math.abs(dx) + Math.abs(dy) > 0) { if (Math.hypot(dx, dy) > 1) dragMoved = true; view.tx += dx; view.ty += dy; apply(); }
-  } else if (pointers.size === 2) {
-    const [a, b] = [...pointers.values()];
-    const d = Math.hypot(a.x - b.x, a.y - b.y);
-    const r = stage.getBoundingClientRect();
-    if (pinchD) zoomAt(d / pinchD, (a.x + b.x) / 2 - r.left, (a.y + b.y) / 2 - r.top);
-    pinchD = d; dragMoved = true;
-  }
-});
-function endPointer(e) {
-  const wasTap = pointers.size === 1 && !dragMoved;
-  pointers.delete(e.pointerId);
-  if (pointers.size < 2) pinchD = 0;
-  if (wasTap && e.type === "pointerup") onTap(e);
-}
-stage.addEventListener("pointerup", endPointer);
-stage.addEventListener("pointercancel", endPointer);
-stage.addEventListener("dblclick", e => { if (e.target.closest(".pop, .ctrl")) return; const r = stage.getBoundingClientRect(); zoomAt(1.8, e.clientX - r.left, e.clientY - r.top); });
-document.getElementById("zin").onclick = () => { const r = stage.getBoundingClientRect(); zoomAt(1.4, r.width/2, r.height/2); };
-document.getElementById("zout").onclick = () => { const r = stage.getBoundingClientRect(); zoomAt(1/1.4, r.width/2, r.height/2); };
-document.getElementById("zfit").onclick = fit;
-new ResizeObserver(() => { if (!view.inited) { view.inited = true; fit(); } else apply(); }).observe(stage);
-
-// ---------- pins ----------
-const GLYPH = {
-  bell: "M-4 2 Q-4 -5 0 -5 Q4 -5 4 2 Z M-5 2 H5 M-1 4 H1",
-  skull: "M-4 1 Q-4 -5 0 -5 Q4 -5 4 1 L2 3 H-2 Z M-2 -1 h0.1 M2 -1 h0.1",
-  talk: "M-4.5 -4 H4.5 V2 H-1 L-3 4 V2 H-4.5 Z",
-  coin: "M0 -5 A5 5 0 1 0 0.01 -5 Z M0 -2.5 V2.5",
-  star: "M0 -5 L1.5 -1.5 L5 -1.2 L2.3 1.2 L3.1 4.8 L0 2.8 L-3.1 4.8 L-2.3 1.2 L-5 -1.2 L-1.5 -1.5 Z",
-  flag: "M-3 5 V-5 M-3 -5 H4 L2 -2.5 L4 0 H-3",
-  bench: "M-5 -1 H5 M-4 -1 V4 M4 -1 V4 M-4 -4 H4",
-  mask: "M-4 -4 Q0 -6 4 -4 Q4 3 0 5 Q-4 3 -4 -4 Z M-2 -1 h0.1 M2 -1 h0.1",
-  spool: "M-4 -4 H4 M-4 4 H4 M-2.5 -4 V4 M2.5 -4 V4 M-2.5 -1 L2.5 1",
-  pin: "M0 -5 V3 M-3 -2 H3"
-};
-function visible(p) { return !hidden.has(p.cat) && !(hideFound && found.has(p.id)); }
-let activeId = null;
-function renderPins() {
-  pinsLayer.innerHTML = "";
-  allPins().forEach(p => {
-    if (!visible(p)) return;
-    const c = CAT[p.cat] || CAT.custom;
-    const g = el("g", { class: "pin" + (found.has(p.id) ? " found" : ""), tabindex: 0, role: "button", "aria-label": p.name });
-    g._x = p.x; g._y = p.y; g._id = p.id;
-    g.appendChild(el("circle", { class: "halo", cx: 0, cy: -16, r: 17, fill: c.color, opacity: 0 }));
-    g.appendChild(el("path", { d: "M0 0 C-4 -7 -12 -11 -12 -18 A12 12 0 1 1 12 -18 C12 -11 4 -7 0 0 Z", fill: c.color, stroke: "#0b0d12", "stroke-width": 1.5 }));
-    const icon = el("path", { d: GLYPH[c.glyph], transform: "translate(0,-18) scale(1.15)", fill: "none", stroke: "#0b0d12", "stroke-width": 1.6, "stroke-linecap": "round", "stroke-linejoin": "round" });
-    g.appendChild(icon);
-    g.addEventListener("keydown", ev => { if (ev.key === "Enter" || ev.key === " ") { ev.preventDefault(); openPop(p.id); } });
-    pinsLayer.appendChild(g);
-  });
-  apply();
-  renderCats(); renderProgress();
-}
-
-// ---------- popup ----------
-const pop = document.getElementById("pop");
-function openPop(id) {
-  const p = allPins().find(q => q.id === id); if (!p) return;
-  activeId = id;
-  const c = CAT[p.cat] || CAT.custom;
-  const isFound = found.has(id);
-  pop.innerHTML = `
-    <button class="x" aria-label="Close">×</button>
-    <h3></h3>
-    <div class="meta"><span class="dot" style="background:${c.color}"></span><span>${c.name}</span><span class="tag"></span>${p.user ? '<span class="tag">yours</span>' : ''}</div>
-    ${p.note ? '<p></p>' : ''}
-    <div class="acts">
-      <button class="btn" id="toggleFound">${isFound ? "Mark not found" : "Mark found"}</button>
-      ${p.user ? '<button class="btn ghost" id="delPin">Delete</button>' : ''}
-    </div>
-    <div id="delConfirm" hidden class="acts"><span class="err">Delete this marker?</span><button class="btn" id="delYes">Delete</button><button class="btn ghost" id="delNo">Keep</button></div>`;
-  pop.querySelector("h3").textContent = p.name;
-  pop.querySelector(".meta .tag").textContent = p.region || "Pharloom";
-  if (p.note) pop.querySelector("p").textContent = p.note;
-  pop.querySelector(".x").onclick = closePop;
-  pop.querySelector("#toggleFound").onclick = () => {
-    found.has(id) ? found.delete(id) : found.add(id);
-    store.set("found", [...found]); renderPins(); if (visible(p)) openPop(id); else closePop();
-  };
-  const del = pop.querySelector("#delPin");
-  if (del) {
-    del.onclick = () => { pop.querySelector("#delConfirm").hidden = false; };
-    pop.querySelector("#delNo").onclick = () => { pop.querySelector("#delConfirm").hidden = true; };
-    pop.querySelector("#delYes").onclick = () => {
-      userPins = userPins.filter(q => q.id !== id); found.delete(id);
-      store.set("user", userPins); store.set("found", [...found]); closePop(); renderPins(); renderAddBox();
-    };
-  }
-  pop.hidden = false; placePopup();
-}
-function closePop() { pop.hidden = true; activeId = null; }
-function placePopup() {
-  if (pop.hidden || !activeId) return;
-  const p = allPins().find(q => q.id === activeId); if (!p) return;
-  const r = stage.getBoundingClientRect();
-  const sx = p.x * view.k + view.tx, sy = p.y * view.k + view.ty;
-  const w = pop.offsetWidth, h = pop.offsetHeight;
-  let left = sx - w / 2, top = sy - 40 - h;
-  if (top < 10) top = sy + 12;
-  left = Math.max(10, Math.min(r.width - w - 10, left));
-  top = Math.max(10, Math.min(r.height - h - 10, top));
-  pop.style.left = left + "px"; pop.style.top = top + "px";
-}
-document.addEventListener("keydown", e => { if (e.key === "Escape") { closePop(); if (adding) stopAdding(); } });
-
-// ---------- categories ----------
-const catsEl = document.getElementById("cats");
-function renderCats() {
-  catsEl.innerHTML = "";
-  const pins = allPins();
+function render() {
+  const s = q.value.trim().toLowerCase(), mode = show.value;
+  listEl.innerHTML = "";
+  let shown = 0;
   CATS.forEach(c => {
-    const total = pins.filter(p => p.cat === c.id).length;
-    const b = document.createElement("button");
-    b.className = "cat"; b.setAttribute("aria-pressed", String(!hidden.has(c.id)));
-    b.innerHTML = `<span class="dot" style="background:${c.color}"></span><span class="nm"></span><span class="n">${total}</span>`;
-    b.querySelector(".nm").textContent = c.name;
-    b.onclick = () => { hidden.has(c.id) ? hidden.delete(c.id) : hidden.add(c.id); store.set("hidden", [...hidden]); renderPins(); };
-    catsEl.appendChild(b);
-  });
-}
-document.getElementById("showAll").onclick = () => { hidden.clear(); store.set("hidden", []); renderPins(); };
-document.getElementById("hideAll").onclick = () => { CATS.forEach(c => hidden.add(c.id)); store.set("hidden", [...hidden]); closePop(); renderPins(); };
-const hideFoundBtn = document.getElementById("hideFound");
-function syncHideFound() { hideFoundBtn.setAttribute("aria-pressed", String(hideFound)); hideFoundBtn.textContent = hideFound ? "Show found" : "Hide found"; }
-hideFoundBtn.onclick = () => { hideFound = !hideFound; store.set("hideFound", hideFound); syncHideFound(); closePop(); renderPins(); };
-syncHideFound();
-
-function renderProgress() {
-  const pins = allPins(); const n = pins.filter(p => found.has(p.id)).length;
-  document.getElementById("foundNum").textContent = n;
-  document.getElementById("foundOf").textContent = `of ${pins.length} found`;
-  document.getElementById("foundBar").style.width = pins.length ? (n / pins.length * 100) + "%" : "0";
-}
-
-// ---------- search ----------
-const q = document.getElementById("q"), results = document.getElementById("results");
-q.addEventListener("input", () => {
-  const s = q.value.trim().toLowerCase(); results.innerHTML = "";
-  if (!s) return;
-  const hits = [];
-  REGIONS.forEach(([name,x0,y0,x1,y1]) => { if (name.toLowerCase().includes(s)) hits.push({ kind: "region", name, x: (x0+x1)/2*S, y: (y0+y1)/2*S }); });
-  allPins().forEach(p => { if ((p.name + " " + (p.region||"") + " " + (p.note||"")).toLowerCase().includes(s)) hits.push({ kind: "pin", p }); });
-  hits.slice(0, 12).forEach(h => {
-    const b = document.createElement("button");
-    if (h.kind === "region") {
-      b.innerHTML = `<span class="dot" style="background:transparent;border:1px solid var(--bone-faint)"></span><span></span><small>area</small>`;
-      b.children[1].textContent = h.name;
-      b.onclick = () => { closePop(); flyTo(h.x, h.y, baseK() * 2.2); };
-    } else {
-      const c = CAT[h.p.cat] || CAT.custom;
-      b.innerHTML = `<span class="dot" style="background:${c.color}"></span><span></span><small></small>`;
-      b.children[1].textContent = h.p.name; b.children[2].textContent = h.p.region || "";
-      b.onclick = () => {
-        if (hidden.has(h.p.cat)) { hidden.delete(h.p.cat); store.set("hidden", [...hidden]); }
-        if (hideFound && found.has(h.p.id)) { hideFound = false; store.set("hideFound", false); syncHideFound(); }
-        renderPins(); flyTo(h.p.x, h.p.y, baseK() * 3); openPop(h.p.id); maybeCollapse();
-      };
-    }
-    results.appendChild(b);
-  });
-  if (!hits.length) results.innerHTML = '<span class="foot">No matches. Try an area name or a boss.</span>';
-});
-
-// ---------- region jump ----------
-const regionList = document.getElementById("regionList");
-[...REGIONS].filter(r => MAJOR.has(r[0])).sort((a,b) => a[0].localeCompare(b[0])).forEach(([name,x0,y0,x1,y1]) => {
-  const b = document.createElement("button"); b.textContent = name;
-  b.onclick = () => { closePop(); flyTo((x0+x1)/2*S, (y0+y1)/2*S, baseK() * 2.2); maybeCollapse(); };
-  regionList.appendChild(b);
-});
-
-// ---------- add markers ----------
-const addBox = document.getElementById("addBox"); const hint = document.getElementById("hint");
-let adding = false, draft = null;
-function regionAt(x, y) {
-  const r = REGIONS.find(([n,x0,y0,x1,y1]) => x >= x0*S && x <= x1*S && y >= y0*S && y <= y1*S);
-  return r ? r[0] : "";
-}
-function renderAddBox() {
-  if (draft) {
-    addBox.innerHTML = `
-      <form class="form" id="pinForm" novalidate>
-        <input id="pinName" placeholder="Name, e.g. Mask shard behind wall" maxlength="60">
-        <select id="pinCat"></select>
-        <textarea id="pinNote" placeholder="Notes (optional)" maxlength="300"></textarea>
-        <span class="err" id="pinErr" hidden>Give the marker a name first.</span>
-        <div class="row"><button class="btn" type="submit">Save marker</button><button class="btn ghost" type="button" id="pinCancel">Cancel</button></div>
-      </form>`;
-    const sel = addBox.querySelector("#pinCat");
-    CATS.forEach(c => { const o = document.createElement("option"); o.value = c.id; o.textContent = c.name; if (c.id === "custom") o.selected = true; sel.appendChild(o); });
-    const nameIn = addBox.querySelector("#pinName"); const err = addBox.querySelector("#pinErr");
-    nameIn.addEventListener("input", () => err.hidden = true);
-    nameIn.focus();
-    addBox.querySelector("#pinCancel").onclick = () => { draft = null; renderAddBox(); renderPins(); };
-    addBox.querySelector("#pinForm").addEventListener("submit", ev => {
-      ev.preventDefault();
-      const name = nameIn.value.trim();
-      if (!name) { err.hidden = false; nameIn.focus(); return; }
-      const pin = { id: "u" + Date.now().toString(36), cat: sel.value, name, x: draft.x, y: draft.y, region: regionAt(draft.x, draft.y), note: addBox.querySelector("#pinNote").value.trim(), user: true };
-      userPins.push(pin); store.set("user", userPins);
-      if (hidden.has(pin.cat)) { hidden.delete(pin.cat); store.set("hidden", [...hidden]); }
-      draft = null; renderAddBox(); renderPins(); openPop(pin.id);
+    const all = items().filter(i => i.cat === c.id);
+    const vis = all.filter(i => (!s || (i.name + " " + (i.area || "")).toLowerCase().includes(s))
+      && (mode === "all" || (mode === "done") === done.has(i.id)));
+    if (!vis.length && (s || mode !== "all" || !all.length)) return;
+    const det = document.createElement("details");
+    det.className = "group"; det.open = state.open[c.id] !== false || !!s;
+    det.addEventListener("toggle", () => { if (!s) { state.open[c.id] = det.open; save(); } });
+    const n = all.filter(i => done.has(i.id)).length;
+    det.innerHTML = `<summary><span class="dot" style="background:${c.color}"></span><span></span><span class="n">${n}/${all.length}</span></summary>`;
+    det.querySelector("summary span:nth-child(2)").textContent = c.name;
+    vis.forEach(i => {
+      shown++;
+      const row = document.createElement("div");
+      row.className = "item" + (done.has(i.id) ? " done" : "");
+      const cid = "chk-" + i.id;
+      row.innerHTML = `<input type="checkbox" id="${cid}" ${done.has(i.id) ? "checked" : ""}><label for="${cid}"><span class="nm"></span><span class="sub"></span></label>`;
+      row.querySelector(".nm").textContent = i.name;
+      row.querySelector(".sub").textContent = i.area || "";
+      row.querySelector("input").addEventListener("change", e => {
+        e.target.checked ? done.add(i.id) : done.delete(i.id);
+        state.done = [...done]; save(); render();
+      });
+      if (i.user) {
+        const del = document.createElement("button");
+        del.className = "del"; del.type = "button"; del.setAttribute("aria-label", "Delete " + i.name); del.textContent = "×";
+        del.onclick = () => { state.user = state.user.filter(u => u.id !== i.id); done.delete(i.id); state.done = [...done]; save(); render(); };
+        row.appendChild(del);
+      }
+      det.appendChild(row);
     });
-  } else {
-    const n = userPins.length;
-    addBox.innerHTML = `<p>${n ? `You've placed ${n} marker${n === 1 ? "" : "s"}.` : "Found a bench, a mask shard or a secret wall? Pin it."}</p>
-      <button class="btn ${adding ? "ghost" : ""}" id="addBtn">${adding ? "Cancel placing" : "Add a marker"}</button>`;
-    addBox.querySelector("#addBtn").onclick = () => adding ? stopAdding() : startAdding();
-  }
+    listEl.appendChild(det);
+  });
+  if (!shown) listEl.innerHTML = `<p class="empty">${s ? "Nothing matches that search." : mode === "done" ? "Nothing ticked yet." : "All done here."}</p>`;
+  const total = items().length, d = items().filter(i => done.has(i.id)).length;
+  document.getElementById("doneNum").textContent = d;
+  document.getElementById("doneOf").textContent = `of ${total} done`;
+  document.getElementById("doneBar").style.width = total ? (d / total * 100) + "%" : "0";
 }
-function startAdding() { adding = true; stage.classList.add("adding"); hint.hidden = false; closePop(); renderAddBox(); maybeCollapse(); }
-function stopAdding() { adding = false; stage.classList.remove("adding"); hint.hidden = true; renderAddBox(); }
-function onTap(e) {
-  const hit = document.elementFromPoint(e.clientX, e.clientY);
-  if (hit && hit.closest(".pop, .ctrl")) return;
-  const pinEl = hit && hit.closest(".pin");
-  if (pinEl && pinEl._id && !adding) { openPop(pinEl._id); return; }
-  if (!adding) { closePop(); return; }
-  const r = stage.getBoundingClientRect();
-  const w = toWorld(e.clientX - r.left, e.clientY - r.top);
-  draft = w; adding = false; stage.classList.remove("adding"); hint.hidden = true;
-  // temporary ghost pin
-  renderPins();
-  const g = el("g", { class: "pin" }); g._x = w.x; g._y = w.y;
-  g.appendChild(el("path", { d: "M0 0 C-4 -7 -12 -11 -12 -18 A12 12 0 1 1 12 -18 C12 -11 4 -7 0 0 Z", fill: "none", stroke: "#e6dfcf", "stroke-width": 2, "stroke-dasharray": "4 3" }));
-  pinsLayer.appendChild(g); apply();
-  renderAddBox(); expandDrawer();
+q.addEventListener("input", render); show.addEventListener("change", render);
+
+// Add items
+const newCat = document.getElementById("newCat");
+CATS.forEach(c => { const o = document.createElement("option"); o.value = c.id; o.textContent = c.name; if (c.id === "other") o.selected = true; newCat.appendChild(o); });
+const newName = document.getElementById("newName"), addErr = document.getElementById("addErr");
+newName.addEventListener("input", () => addErr.hidden = true);
+document.getElementById("addForm").addEventListener("submit", e => {
+  e.preventDefault();
+  const name = newName.value.trim();
+  if (!name) { addErr.hidden = false; newName.focus(); return; }
+  const area = document.getElementById("newArea").value.trim();
+  state.user.push({ id: "u" + Date.now().toString(36), cat: newCat.value, name, area, user: true });
+  state.open[newCat.value] = true;
+  save(); newName.value = ""; document.getElementById("newArea").value = ""; q.value = ""; show.value = "all"; render();
+  setStatus(`Added "${name}".`);
+});
+
+// Backup / restore
+document.getElementById("exportBtn").onclick = () => {
+  const blob = new Blob([JSON.stringify({ done: [...done], user: state.user }, null, 2)], { type: "application/json" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob); a.download = "pharloom-progress.json";
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  setStatus("Backup saved as pharloom-progress.json.");
+};
+document.getElementById("importFile").addEventListener("change", e => {
+  const f = e.target.files[0]; if (!f) return;
+  const r = new FileReader();
+  r.onload = () => {
+    try {
+      const d = JSON.parse(r.result);
+      if (!Array.isArray(d.done) || !Array.isArray(d.user)) throw 0;
+      done = new Set(d.done); state.done = d.done; state.user = d.user; save(); render();
+      setStatus("Progress restored from backup.");
+    } catch { setStatus("That file isn't a Pharloom Atlas backup. Pick the pharloom-progress.json file you saved."); }
+    e.target.value = "";
+  };
+  r.readAsText(f);
+});
+const resetConfirm = document.getElementById("resetConfirm");
+document.getElementById("resetBtn").onclick = () => resetConfirm.hidden = false;
+document.getElementById("resetNo").onclick = () => resetConfirm.hidden = true;
+document.getElementById("resetYes").onclick = () => { done.clear(); state.done = []; save(); render(); resetConfirm.hidden = true; setStatus("All items unticked."); };
+
+// Panel toggle
+const app = document.getElementById("app"), toggleBtn = document.getElementById("togglePanel"), openBtn = document.getElementById("openPanel");
+function setPanel(open) {
+  app.classList.toggle("closed", !open);
+  toggleBtn.textContent = open ? "Hide" : "Show";
+  toggleBtn.setAttribute("aria-expanded", String(open));
+  openBtn.hidden = open;
+  state.panel = open; save();
 }
+toggleBtn.onclick = () => setPanel(app.classList.contains("closed"));
+openBtn.onclick = () => setPanel(true);
+setPanel(state.panel);
 
-// ---------- mobile drawer ----------
-const side = document.getElementById("side"), drawerBtn = document.getElementById("drawerBtn");
-const isPhone = () => matchMedia("(max-width: 760px)").matches;
-drawerBtn.onclick = () => { side.classList.toggle("collapsed"); const open = !side.classList.contains("collapsed"); drawerBtn.textContent = open ? "Hide panel" : "Show panel"; drawerBtn.setAttribute("aria-expanded", String(open)); };
-function maybeCollapse() { if (isPhone() && !side.classList.contains("collapsed")) drawerBtn.click(); }
-function expandDrawer() { if (isPhone() && side.classList.contains("collapsed")) drawerBtn.click(); }
-
-// ---------- view switch (Map Genie embed) ----------
-const embed = document.getElementById("embed"), genieFrame = document.getElementById("genieFrame");
-const vA = document.getElementById("viewAtlas"), vG = document.getElementById("viewGenie");
-function setView(v) {
-  const genie = v === "genie";
-  if (genie && !genieFrame.src) genieFrame.src = "https://mapgenie.io/hollow-knight-silksong/maps/pharloom?embed=light";
-  embed.hidden = !genie; closePop();
-  vA.setAttribute("aria-pressed", String(!genie)); vG.setAttribute("aria-pressed", String(genie));
-  store.set("view", v);
-}
-vA.onclick = () => setView("atlas"); vG.onclick = () => { setView("genie"); maybeCollapse(); };
-setView(store.get("view", "genie"));
-
-renderAddBox();
-renderPins();
+render();
 })();
 </script>
 </body>

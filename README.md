@@ -1,17 +1,9 @@
 # Pharloom Atlas
 
-An interactive fan map of Pharloom from *Hollow Knight: Silksong*.
+A personal page for playing *Hollow Knight: Silksong*: the Map Genie interactive map of Pharloom, with a progress tracker beside it.
 
-- Pan and zoom (drag, scroll, pinch)
-- Filter by category: bellway stations, bosses, NPCs, vendors, abilities and more
-- Search bosses, NPCs and areas
-- Mark locations as found and track progress
-- Add your own markers with notes
+- The map is embedded from [Map Genie](https://mapgenie.io/hollow-knight-silksong/maps/pharloom) using their share code.
+- The tracker works without any login. Tick off bosses, abilities, bellway stations and NPCs, or add your own items.
+- Progress is saved in your browser. Use **Back up** and **Restore** to move it to another device.
 
-Found marks and custom markers are saved in your browser only.
-
-Region layout and preloaded markers are approximate and hand-placed. This is an unofficial fan project and is not affiliated with Team Cherry.
-
-## Run locally
-
-Open `index.html` in a browser. No build step.
+Unofficial fan project, not affiliated with Team Cherry or Map Genie.
